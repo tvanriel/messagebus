@@ -1,15 +1,18 @@
-package messagebus
+package messagebus_test
 
 import (
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/tvanriel/messagebus"
 )
 
 func BenchmarkPublish(b *testing.B) {
-	bus := New(b.N)
+	bus := messagebus.New()
 
 	var wg sync.WaitGroup
+
 	wg.Add(b.N)
 
 	_ = bus.Subscribe("topic", func() {
@@ -28,7 +31,7 @@ func BenchmarkPublish(b *testing.B) {
 }
 
 func BenchmarkSubscribe(b *testing.B) {
-	bus := New(1)
+	bus := messagebus.New()
 
 	b.ResetTimer()
 
@@ -40,15 +43,17 @@ func BenchmarkSubscribe(b *testing.B) {
 }
 
 func benchmark(b *testing.B, subscribersCount, topicsCount int) {
-	bus := New(b.N)
+	b.Helper()
+
+	bus := messagebus.New()
 
 	var wg sync.WaitGroup
 
 	wg.Add(b.N * subscribersCount)
 
-	for i := 0; i < topicsCount; i++ {
-		for j := 0; j < subscribersCount; j++ {
-			_ = bus.Subscribe(strconv.Itoa(i), func() {
+	for i := range topicsCount {
+		for range subscribersCount {
+			_ = bus.Subscribe(messagebus.Topic(strconv.Itoa(i)), func() {
 				wg.Done()
 			})
 		}
@@ -58,7 +63,7 @@ func benchmark(b *testing.B, subscribersCount, topicsCount int) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			bus.Publish(strconv.Itoa(topicsCount - 1))
+			bus.Publish(messagebus.NewRouteKeyFromString(strconv.Itoa(topicsCount - 1)))
 		}
 	})
 

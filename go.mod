@@ -1,3 +1,7 @@
-module github.com/vardius/message-bus
+module github.com/tvanriel/messagebus
 
-go 1.12
+go 1.26
+
+require github.com/stretchr/testify v1.12.0
+
+require gopkg.in/yaml.v3 v3.0.1 // indirect

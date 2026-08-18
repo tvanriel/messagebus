@@ -4,23 +4,25 @@ import (
 	"fmt"
 	"sync"
 
-	messagebus "github.com/vardius/message-bus"
+	messagebus "github.com/tvanriel/messagebus"
 )
 
 func Example() {
-	queueSize := 100
-	bus := messagebus.New(queueSize)
+	bus := messagebus.New()
 
 	var wg sync.WaitGroup
+
 	wg.Add(2)
 
 	_ = bus.Subscribe("topic", func(v bool) {
 		defer wg.Done()
+
 		fmt.Println("s1", v)
 	})
 
 	_ = bus.Subscribe("topic", func(v bool) {
 		defer wg.Done()
+
 		fmt.Println("s2", v)
 	})
 
@@ -35,30 +37,28 @@ func Example() {
 }
 
 func Example_second() {
-	queueSize := 2
 	subscribersAmount := 3
 
-	ch := make(chan int, queueSize)
+	ch := make(chan int)
 	defer close(ch)
 
-	bus := messagebus.New(queueSize)
+	bus := messagebus.New()
 
-	for i := 0; i < subscribersAmount; i++ {
+	for range subscribersAmount {
 		_ = bus.Subscribe("topic", func(i int, out chan<- int) { out <- i })
 	}
 
 	go func() {
-		for n := 0; n < queueSize; n++ {
+		for n := range 2 {
 			bus.Publish("topic", n, ch)
 		}
 	}()
 
 	var sum = 0
-	for sum < (subscribersAmount * queueSize) {
-		select {
-		case <-ch:
-			sum++
-		}
+	for sum < (subscribersAmount * 2) {
+		<-ch
+
+		sum++
 	}
 
 	fmt.Println(sum)

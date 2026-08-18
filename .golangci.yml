@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+#
+version: '2'
+
+linters:
+  default: all
+  disable:
+    - exhaustruct
+    - revive
+    - forbidigo
+    - varnamelen
+  settings:
+    goconst:
+      ignore-tests: true
+    depguard:
+      rules:
+        test:
+          files:
+            - "!$all"
+            - "$test"
+          allow:
+            - "$gostd"
+            - "github.com/stretchr/testify/assert"
+            - "github.com/stretchr/testify/require"
+            - "github.com/tvanriel/messagebus"
+        main:
+          files:
+            - "$all"
+            - "!$test"
+          allow:
+            - "$gostd"
+            - "github.com/tvanriel/messagebus"
+

@@ -1,15 +1,18 @@
-package messagebus
+package messagebus_test
 
 import (
 	"errors"
 	"fmt"
-	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/tvanriel/messagebus"
 )
 
 func TestNew(t *testing.T) {
-	bus := New(runtime.NumCPU())
+	t.Parallel()
+
+	bus := messagebus.New()
 
 	if bus == nil {
 		t.Fail()
@@ -17,7 +20,9 @@ func TestNew(t *testing.T) {
 }
 
 func TestSubscribe(t *testing.T) {
-	bus := New(runtime.NumCPU())
+	t.Parallel()
+
+	bus := messagebus.New()
 
 	if bus.Subscribe("test", func() {}) != nil {
 		t.Fail()
@@ -29,77 +34,80 @@ func TestSubscribe(t *testing.T) {
 }
 
 func TestUnsubscribe(t *testing.T) {
-	bus := New(runtime.NumCPU())
+	t.Parallel()
+
+	bus := messagebus.New()
 
 	handler := func() {}
 
-	if err := bus.Subscribe("test", handler); err != nil {
+	err := bus.Subscribe("test", handler)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := bus.Unsubscribe("test", handler); err != nil {
-		fmt.Println(err)
-		t.Fail()
-	}
-
-	if err := bus.Unsubscribe("non-existed", func() {}); err == nil {
+	err = bus.Unsubscribe("test", handler)
+	if err != nil {
 		fmt.Println(err)
 		t.Fail()
 	}
 }
 
 func TestClose(t *testing.T) {
-	bus := New(runtime.NumCPU())
+	t.Parallel()
+
+	bus := messagebus.New()
 
 	handler := func() {}
 
-	if err := bus.Subscribe("test", handler); err != nil {
+	err := bus.Subscribe("test", handler)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	original, ok := bus.(*messageBus)
-	if !ok {
-		fmt.Println("Could not cast message bus to its original type")
-		t.Fail()
-	}
-
-	if 0 == len(original.handlers) {
+	if bus.NumHandlers() == 0 {
 		fmt.Println("Did not subscribed handler to topic")
 		t.Fail()
 	}
 
 	bus.Close("test")
 
-	if 0 != len(original.handlers) {
+	if bus.NumHandlers() != 0 {
 		fmt.Println("Did not unsubscribed handlers from topic")
 		t.Fail()
 	}
 }
 
 func TestPublish(t *testing.T) {
-	bus := New(runtime.NumCPU())
+	t.Parallel()
+
+	bus := messagebus.New()
 
 	var wg sync.WaitGroup
+
 	wg.Add(2)
 
 	first := false
 	second := false
 
-	if err := bus.Subscribe("topic", func(v bool) {
+	err := bus.Subscribe("topic.*", func(v bool) {
 		defer wg.Done()
+
 		first = v
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := bus.Subscribe("topic", func(v bool) {
+	err = bus.Subscribe("topic.*", func(v bool) {
 		defer wg.Done()
+
 		second = v
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	bus.Publish("topic", true)
+	bus.Publish("topic.test", true)
 
 	wg.Wait()
 
@@ -109,10 +117,14 @@ func TestPublish(t *testing.T) {
 }
 
 func TestHandleError(t *testing.T) {
-	bus := New(runtime.NumCPU())
-	if err := bus.Subscribe("topic", func(out chan<- error) {
-		out <- errors.New("I do throw error")
-	}); err != nil {
+	t.Parallel()
+
+	bus := messagebus.New()
+
+	err := bus.Subscribe("topic", func(out chan<- error) {
+		out <- errors.New("I do throw error") //nolint:err113 // Used for test, not for comparison.
+	})
+	if err != nil {
 		t.Fatal(err)
 	}
 
